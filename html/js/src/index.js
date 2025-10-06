@@ -1,3 +1,6 @@
+import { a } from "./declare.js";
+import { exp } from "./export.js";
+
 console.log(a)
 
 // function greet() {
@@ -11,3 +14,5 @@ var greet = () => {
 }
 
 greet();
+
+console.log(exp)
