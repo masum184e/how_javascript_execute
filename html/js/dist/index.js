@@ -1,4 +1,6 @@
-console.log(a)
+"use strict";
+
+console.log(a);
 
 // function greet() {
 //   console.log("Hello from index.js");
@@ -6,8 +8,7 @@ console.log(a)
 
 // greet();
 
-var greet = () => {
+var greet = function greet() {
   console.log("Hello from index.js");
-}
-
+};
 greet();

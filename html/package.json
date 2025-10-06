@@ -1,0 +1,17 @@
+{
+  "name": "how_javascript_execute",
+  "version": "1.0.0",
+  "description": "HTML parsing is the process by which the browser reads your raw HTML text (.html file) and converts it into a structured, in-memory representation called the DOM (Document Object Model).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3"
+  }
+}
