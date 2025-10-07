@@ -819,6 +819,8 @@ foo();
 console.log("End of script");
 ```
 
+Visualize Execution: [https://www.jsv9000.app/](https://www.jsv9000.app/)
+
 ## Global Execution Context and Call Stack
 
 - **Call Stack**: The first thing that happens when the script runs is that the global execution context is pushed onto the call stack. This is the top-level execution context for the whole script.
