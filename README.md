@@ -1,3 +1,26 @@
+# Contents
+
+- [HTML Parsing](#html-parsing)
+  - [HTML Source Code Arrives](#1-html-source-code-arrives)
+  - [Tokenization](#2-tokenization)
+  - [DOM Tree Construction](#3-dom-tree-construction)
+- [Script Handling](#script-handling)
+  - [Normal `<script>`](#normal-script)
+  - [`<script defer>`](#script-defer)
+  - [`<script async>`](#script-async)
+  - [Multiple Script Handling](#multiple-script-handling)
+- [Babel](#babel)
+  - [Why Babel Is Needed](#why-babel-is-needed)
+  - [What Is Babel](#what-is-babel)
+  - [Installation](#installation)
+  - [How Babel Works](#how-babel-works)
+- [Bundler](#bundler)
+  - [Why We Need Bundler](#why-we-need-bundler)
+  - [Major JavaScript Bundlers](#major-javascript-bundlers)
+  - [webpack](#webpack)
+    - [Installation](#installation-1)
+    - [How It Works](#how-babel-works)
+
 # HTML Parsing
 
 HTML parsing is the process by which the browser reads your raw HTML text (.html file) and converts it into a structured, in-memory representation called the DOM (Document Object Model).
@@ -50,9 +73,14 @@ Hello
 
 As the tokens are recognized, the browser creates nodes and connects them hierarchically to build the DOM tree.
 
-```html
-Document └── html ├── head │ └── title ("My Page") └── body ├── h1 ("Hello") └──
-p ("Welcome to HTML parsing!")
+```
+Document
+└── html
+    ├── head
+    │   └── title: "My Page"
+    └── body
+        ├── h1: "Hello"
+        └── p: "Welcome to HTML parsing!"
 ```
 
 - A tree structure representing all elements and their relationships.
@@ -92,7 +120,7 @@ This is why `<script>` tags often go at the end of `<body>` — to avoid blockin
 - Executes as soon as it’s ready
 - Might execute before or after parsing finishes
 
-# Data Sharing
+## Multiple Script Handling
 
 When you include multiple scripts using `<script>` tags without `type="module"`,
 all of them run in the same global scope (the `window` object in browsers).
@@ -106,7 +134,7 @@ Scripts are executed in the order they appear in the HTML (unless using `async` 
 
 Multiple file share data which are in the same global scope, but the run independently.
 
-## When Scripts Do NOT Share Data
+**When Scripts Do NOT Share Data**
 
 If you use the module system (i.e., `<script type="module">`),
 each file runs in its own module scope, not the global scope.
@@ -426,47 +454,45 @@ Webpack solves this by:
 
 2. Configure Webpack
 
-Create `webpack.config.js` in root directory:
+   Create `webpack.config.js` in root directory:
 
-```js
-const path = require("path");
+   ```js
+   const path = require("path");
 
-module.exports = {
-  entry: "./src/index.js", // Your entry JavaScript file
-  output: {
-    filename: "bundle.js", // Output bundled file
-    path: path.resolve(__dirname, "dist"), // Output directory
-  },
-  module: {
-    rules: [
-      {
-        test: /\.js$/, // Apply Babel to JavaScript files
-        exclude: /node_modules/, // Don't transpile node_modules
-        use: {
-          loader: "babel-loader", // Use Babel to transpile code
-        },
-      },
-    ],
-  },
-  resolve: {
-    extensions: [".js"], // Resolve .js file extensions
-  },
-};
-```
+   module.exports = {
+     mode: "development", // or 'production'
+     entry: "./js/src/index.js", // Correct path to your entry file
+     output: {
+       filename: "bundle.js", // The output bundled file
+       path: path.resolve(__dirname, "js/dist"), // Output directory (inside js/)
+     },
+     module: {
+       rules: [
+         {
+           test: /\.js$/, // Process JavaScript files
+           exclude: /node_modules/, // Don't transpile node_modules
+           use: {
+             loader: "babel-loader", // Use Babel to transpile JS
+           },
+         },
+       ],
+     },
+   };
+   ```
 
 3. Build Bundle
 
-```bash
-npx webpack
-```
+   ```bash
+   npx webpack
+   ```
 
-This generates `dist/bundle.js`.
+   This generates `dist/bundle.js`.
 
-Run dev server with hot reload:
+   Run dev server with hot reload:
 
-```bash
-npx webpack serve
-```
+   ```bash
+   npx webpack serve
+   ```
 
 ### How Webpack Works
 
@@ -502,3 +528,353 @@ Once Webpack has built the dependency graph, it begins bundling.
 
 - Bundling means combining all the modules (your JavaScript files, in this case) into one or a few files that the browser can load efficiently.
 - For example, `index.js`, `export.js`, and any other imported modules are combined into `bundle.js`.
+
+# Engine
+
+<img src="./images/v8engine.png" />
+V8 is Google’s open-source JavaScript engine, written in C++, responsible for compiling and executing JavaScript code.
+
+- It turns JavaScript source code → machine code that your CPU executes directly.
+- It’s fast because it uses Just-In-Time (JIT) compilation and smart optimizations.
+
+## Parser & Scanner
+
+- The Scanner tokenizes the JavaScript source (breaks into symbols, identifiers, keywords).
+- The Parser turns these tokens into an AST (Abstract Syntax Tree) — a tree-like representation of code structure.
+
+## Ignition (Interpreter)
+
+- Ignition is V8’s interpreter.
+- It takes the AST and converts it into bytecode — a lightweight, low-level representation of your JS.
+- Then, it executes that bytecode.
+
+Bytecode = intermediate form between source code and machine code.
+
+Bytecode of `let a = 1 + 2;` might look like:
+
+```
+LdaSmi [1]
+AddSmi [2]
+StaGlobal a
+```
+
+## Profiler & Hot Function Detection
+
+While Ignition runs the code, V8 profiles it — meaning it keeps track of:
+
+- Which functions run often (“hot” functions)
+- What data types are being used
+- How objects are shaped (hidden classes)
+
+When a function runs enough times, it’s marked as hot — and sent to the TurboFan optimizer.
+
+## TurboFan (Optimizing JIT Compiler)
+
+- TurboFan compiles hot functions into highly optimized machine code.
+- It makes speculative optimizations (based on observed types and patterns).
+
+### Hot Function
+
+A hot function is a function that gets executed many times or runs in performance-critical parts of your program — so the engine decides to optimize it into machine code for faster performance.
+
+**Why the Concept Exists**
+
+JavaScript engines like V8 use JIT (Just-In-Time) compilation:
+
+- Code starts running immediately via an interpreter (Ignition in V8)
+- Meanwhile, the engine watches how your code behaves at runtime
+- If a function runs many times and behaves predictably (same argument types, same object shapes) → it’s hot
+- Then V8 compiles it into optimized machine code using TurboFan
+
+This way:
+
+- Startup is fast (no heavy compilation upfront)
+- Performance improves automatically for frequently-used code
+
+## Garbage Collector
+
+The V8 engine uses a generational garbage collection strategy to optimize memory management. This approach divides memory into two areas: the young generation and the old generation.
+
+JavaScript manages memory automatically — V8 does this using a Generational Garbage
+
+### 1. Memory Allocation (Heap)
+
+- When JavaScript objects (like functions, arrays, and objects) are created, they are allocated in the heap memory.
+- The young generation is where new objects are allocated. Initially, most objects are created here.
+
+### 2. Mark-and-Sweep Algorithm
+
+V8 uses a mark-and-sweep algorithm for garbage collection. The process can be broken down into these steps:
+
+#### Mark Phase
+
+- The garbage collector starts by identifying root objects. These are objects that are directly accessible by the program (e.g., global variables, objects referenced in the call stack, and variables that are part of the active execution context).
+- The GC marks all objects that are reachable from the root objects as alive.
+- Any object that cannot be reached from the root objects is considered unreachable and eligible for garbage collection.
+
+#### Sweep Phase
+
+- Once all reachable objects are marked, the garbage collector will sweep through the heap and free the memory of any objects that are not marked as reachable.
+- These freed objects are effectively removed from memory, making space for new allocations.
+
+### 3. Generational Garbage Collection (Young vs Old Generation)
+
+#### Young Generation:
+
+- This is where newly created objects are allocated. It is designed to quickly collect short-lived objects that will be discarded soon after their creation.
+- The young generation is smaller and is collected more frequently. V8's GC uses a process called minor GC to clean up the young generation.
+
+#### Old Generation
+
+- Objects that survive multiple collections in the young generation are promoted to the old generation. These are objects that have longer lifespans (e.g., global objects, or objects stored for an extended period).
+- The old generation is much larger and is collected less frequently, using a major GC.
+- When a major GC happens, the garbage collector may scan through the entire heap, including the old generation.
+
+### 4. Garbage Collection Triggers
+
+#### Minor GC
+
+- Occurs frequently and focuses on cleaning up the young generation.
+- Triggered when the young generation becomes full. It is a relatively quick process because only a small portion of memory is being cleaned.
+
+#### Major GC
+
+- Occurs less frequently but is more expensive, as it scans the entire heap (young and old generations).
+- Triggered when the old generation becomes full or when the system needs to reclaim memory.
+
+### 5. Mark-Sweep & Compaction
+
+- After marking objects and sweeping unreachable ones, V8 may also compact memory. Compaction involves moving live objects closer together to reduce memory fragmentation.
+- The goal of compaction is to make the heap more efficient by minimizing gaps between live objects, improving memory usage.
+
+### 6. Reference Counting (Used Sparingly)
+
+- Although V8 uses mark-and-sweep primarily, earlier versions of the V8 engine used reference counting. This involved counting the number of references to an object.
+- When the reference count drops to zero (i.e., the object is no longer referenced by any variable), it is immediately collected.
+- However, reference counting has its downsides (such as inability to detect circular references), so it's used minimally in V8 today.
+
+# Runtime
+
+## Heap
+
+- it stores the value of the variables, functions.
+- Stores dynamic, variable-size objects.
+- Slower access.
+- Used for non-primitives (objects, arrays, functions).
+- The references stored in the stack, but the actual object/array data lives in the heap.
+
+```scss
+Stack:
+obj -> reference (pointer to heap)
+arr -> reference (pointer to heap)
+
+Heap:
+{ name: "Masum" }
+[1,2,3]
+```
+
+## Callstack
+
+- its also called `Execution Context Stack`
+- whenever a new execution context is created(a function is invoked), it is pushed onto the stack
+- when a function is completes, its execution context is popped off the stack
+- Stores fixed-size, simple data.
+- Fast access.
+- Used for primitives and references to objects.
+
+### Stack vs Heap
+
+```
+Stack (fast, fixed size):
++-------+
+| x = 10|
+| y = 20|
+| obj -> pointer to heap |
++-------+
+
+Heap (dynamic, big):
++---------------------+
+| { name: "Masum" }   |
+| [1,2,3]             |
++---------------------+
+```
+
+- When you copy a primitive, a new copy is made.
+- When you copy a non-primitive, the reference is copied, not the object itself.
+
+`var`, `let`, and `const` don’t define where (heap or stack) a value is stored; they only define the variable’s scope and, in the case of `const`, the immutability of the binding. The actual storage depends on the type of value: primitives go on the stack, and objects/arrays/functions go on the heap.
+
+## Event Loop
+
+V8 only executes JavaScript — it doesn’t include Web APIs or the event loop itself.
+
+- In Chrome → V8 + Blink (browser runtime)
+- In Node.js → V8 + libuv (event loop + async I/O)
+
+So:
+
+- V8 runs your JS synchronously.
+- Asynchronous tasks (timers, fetch, I/O) are handled by the host environment and return results back to V8 via callback queues.
+
+The Event Loop continuously checks:
+
+1. The Call Stack → runs synchronous code
+2. The Microtask Queue → runs microtasks (Promises, async/await, etc.)
+3. The Macrotask Queue (also called the Task Queue) → runs tasks like `setTimeout`, `fetch`, and events
+
+## Queue
+
+A queue is a general term for a list of tasks waiting to be executed in order (FIFO — First In, First Out).
+
+In JavaScript:
+
+- There are different queues for different types of asynchronous work:
+  - Microtask Queue
+  - Macrotask Queue (Task Queue)
+
+So when people say “the queue,” they usually mean one of these two queues managed by the Event Loop.
+
+### Microtasks
+
+Microtasks are small, high-priority asynchronous tasks that execute immediately after the current synchronous code — before the browser renders or any macrotasks run.
+
+- `Promise.then()`, `Promise.catch()`, `Promise.finally()`
+- `async/await` (code after `await`)
+- `queueMicrotask()`
+- `MutationObserver`
+
+**When They Run:**
+
+After the current synchronous task finishes and before any macrotask starts.
+
+### Macrotasks
+
+Macrotasks (also called tasks) are larger asynchronous tasks that are scheduled to run after all microtasks have finished.
+
+- `setTimeout()`
+- `setInterval()`
+- `setImmediate()` (Node.js)
+- `I/O callbacks`
+- `fetch().then()` (fetch callback itself is microtask)
+- DOM events like `click` or `scroll`
+
+**When They Run:**
+
+- After all synchronous code and all microtasks are completed.
+- Only one macrotask runs per event loop cycle.
+
+### Combined Example
+
+```js
+console.log("1");
+
+setTimeout(() => console.log("2 (Macrotask)"), 0);
+
+Promise.resolve().then(() => console.log("3 (Microtask)"));
+
+console.log("4");
+```
+
+| Step | Action                                        | Queue        |
+| ---- | --------------------------------------------- | ------------ |
+| 1    | `"1"` logged                                  | Synchronous  |
+| 2    | `setTimeout()` added to **Macrotask Queue**   | Macrotask    |
+| 3    | `Promise.then()` added to **Microtask Queue** | Microtask    |
+| 4    | `"4"` logged                                  | Synchronous  |
+| 5    | Stack empty → run **Microtask Queue**         | `"3"` logged |
+| 6    | Then run **Macrotask Queue**                  | `"2"` logged |
+
+The Microtask Queue and the Macrotask Queue in JavaScript are both regular FIFO (First-In, First-Out) queues in structure —
+but the Event Loop gives higher priority to the Microtask Queue when deciding what to execute next.
+
+# Execution Model
+
+```js
+// Global context (global execution context)
+console.log("Start of script");
+var x = "Global Execution Context";
+
+Promise.resolve().then(() => {
+  console.log("Inside first Promise then (microtask)");
+});
+
+setTimeout(() => {
+  console.log("Inside setTimeout (macrotask)");
+  Promise.resolve().then(() => {
+    console.log("Inside Promise then (microtask)");
+  });
+}, 1000);
+
+Promise.resolve().then(() => {
+  console.log("Inside last Promise then (microtask)");
+});
+
+function foo() {
+  let bar = "Hello from foo";
+  console.log(bar); // Accessing local variable bar
+}
+
+foo();
+
+console.log("End of script");
+```
+
+## Global Execution Context and Call Stack
+
+- **Call Stack**: The first thing that happens when the script runs is that the global execution context is pushed onto the call stack. This is the top-level execution context for the whole script.
+- **Global Scope**: The global context holds all the global variables and functions.
+
+### Execution Starts
+
+- The global context starts execution and begins with `console.log('Start of script')` and ....
+- The call stack executes this log, and it’s popped off the stack once executed.
+- Then, the global execution context proceeds to define the variable `x` with the value `"Global Execution Context"`, but nothing is printed for that as it's just an assignment.
+
+## Asynchronous Task
+
+- `setTimeout` and `Promise.resolve().then(...)` are asynchronous functions.
+- When the JavaScript engine encounters `setTimeout`, it doesn't execute it immediately. Instead, it sends it to the **Web API** environment (which is part of the browser's JavaScript runtime).
+  - `setTimeout` sets a timer for 1000 ms and doesn't block the execution.
+  - The `Promise.resolve().then(...)` is also handed over to the **Web API** but for asynchronous execution. However, they are added to the **microtask queue** to be executed before macrotasks, ensuring that microtasks are executed first.
+
+## Local Execution Context
+
+- The function `foo()` is called, so a new stack frame is pushed onto the call stack.
+- Inside `foo()`, the variable `bar` is declared and logged:
+  - `let bar = 'Hello from foo'` creates a local variable in the `foo` function's scope.
+  - The call stack handles this code and executes it.
+- Once `foo()` finishes executing, it is popped from the call stack, returning control to the global execution context.
+
+## Logging the End of Script (Call Stack)
+
+- `console.log('End of script')` is executed synchronously.
+- This is logged, and the function call is popped from the call stack.
+
+## Event Loop: Handling `setTimeout` (Macrotask Queue)
+
+- Event Loop: Once all synchronous code finishes (i.e., the call stack is empty), the event loop checks if there are any tasks in the macrotask queue (also known as the task queue).
+
+- Macrotask Queue: The callback from `setTimeout` (after 1000 ms) is now ready to be executed, so it is moved to the macrotask queue.
+
+- The event loop moves this task from the macrotask queue to the call stack for execution.
+
+  - The `console.log('Inside setTimeout (macrotask)')` is printed.
+  - Now, the callback for `setTimeout` is popped from the call stack after execution.
+
+## Event Loop: Handling `setTimeout` (Macrotask Queue)
+
+- Event Loop: Once all synchronous code finishes (i.e., when the call stack is empty), the event loop checks if there are any tasks in the macrotask queue (also known as the task queue).
+- Macrotask Queue: The callback function from `setTimeout` (after 1000 ms) is now ready to be executed, so it is moved to the macrotask queue.
+- The event loop picks up the task from the macrotask queue and moves it to the call stack for execution:
+  - `console.log('Inside setTimeout (macrotask)')` is printed.
+  - After executing this, the callback for `setTimeout` is popped from the call stack.
+
+## Event Loop: Handling Microtasks (Microtask Queue)
+
+- **Microtask Queue**: The microtask queue holds tasks that need to be executed after the current script finishes but before the event loop picks up any new tasks from the macrotask queue.
+- After the macrotask (i.e., the `setTimeout` callback) is executed, the event loop checks and executes tasks in the microtask queue. The first task in the queue is:
+  - `console.log('Inside first Promise then (microtask)')` is printed.
+- The next microtask is the promise inside the `setTimeout` callback:
+  - `console.log('Inside Promise then (microtask)')` is printed.
+- The last microtask is the promise from the global context:
+  - `console.log('Inside last Promise then (microtask)')` is printed.
